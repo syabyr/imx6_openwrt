@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: GPL-2.0+
+//
+// Copyright 2012 Freescale Semiconductor, Inc.
+// Copyright 2011 Linaro Ltd.
+
+/dts-v1/;
+
+#include "imx6q.dtsi"
+#include "imx6q-tqe9v1.dtsi"
+
+/ {
+	model = "TQ E9 V1";
+	compatible = "fsl,imx6q-tqe9v1", "fsl,imx6q";
+};
+
+&sata {
+	status = "okay";
+};
+
+&ipu1_csi1_from_mipi_vc1 {
+	clock-lanes = <0>;
+	data-lanes = <1 2>;
+};
