@@ -26,10 +26,10 @@
 #define IMX_FEC_BASE			ENET_BASE_ADDR
 #define CONFIG_FEC_XCV_TYPE		RGMII
 #define CONFIG_ETHPRIME			"FEC"
-#define CONFIG_FEC_MXC_PHYADDR		1
+#define CONFIG_FEC_MXC_PHYADDR		5
 
 #define CONFIG_PHYLIB
-#define CONFIG_PHY_ATHEROS
+#define CONFIG_PHY_REALTEK
 
 #ifdef CONFIG_CMD_SF
 #define CONFIG_MXC_SPI
@@ -41,7 +41,7 @@
 
 #ifdef CONFIG_SUPPORT_EMMC_BOOT
 #define EMMC_ENV \
-	"emmcdev=2\0" \
+	"emmcdev=1\0" \
 	"update_emmc_firmware=" \
 		"if test ${ip_dyn} = yes; then " \
 			"setenv get_cmd dhcp; " \
@@ -92,8 +92,8 @@
 			"fi; "	\
 		"fi\0" \
 	EMMC_ENV	  \
-	"mmcargs=setenv bootargs console=${console},${baudrate} " \
-		"root=${mmcroot}\0" \
+	"bootargs=console=ttymxc0,115200 root=/dev/mmcblk1p2 rootwait rootfstype=ext4 rw\0" \
+	"ethaddr=C6:F4:C7:B5:3A:23\0" \
 	"loadbootscript=" \
 		"fatload mmc ${mmcdev}:${mmcpart} ${loadaddr} ${script};\0" \
 	"bootscript=echo Running bootscript from mmc ...; " \
@@ -158,18 +158,9 @@
 			"fi;\0" \
 
 #define CONFIG_BOOTCOMMAND \
-	"run findfdt;" \
-	"mmc dev ${mmcdev};" \
-	"if mmc rescan; then " \
-		"if run loadbootscript; then " \
-		"run bootscript; " \
-		"else " \
-			"if run loadimage; then " \
-				"run mmcboot; " \
-			"else run netboot; " \
-			"fi; " \
-		"fi; " \
-	"else run netboot; fi"
+	"fatload mmc 1:1 0x12000000 zImage;" \
+	"fatload mmc 1:1 0x13000000 sabresd.dtb;" \
+	"bootz 0x12000000 - 0x13000000"
 
 #define CONFIG_ARP_TIMEOUT     200UL
 

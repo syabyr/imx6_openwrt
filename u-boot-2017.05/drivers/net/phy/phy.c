@@ -655,6 +655,7 @@ static struct phy_device *phy_device_create(struct mii_dev *bus, int addr,
 int __weak get_phy_id(struct mii_dev *bus, int addr, int devad, u32 *phy_id)
 {
 	int phy_reg;
+	mdelay(10);
 
 	/* Grab the bits from PHYIR1, and put them
 	 * in the upper half */

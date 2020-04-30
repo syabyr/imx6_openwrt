@@ -25,8 +25,6 @@
 #include <asm/io.h>
 #include <asm/arch/sys_proto.h>
 #include <i2c.h>
-#include <power/pmic.h>
-#include <power/pfuze100_pmic.h>
 #include "../common/pfuze.h"
 #include <asm/arch/mx6-ddr.h>
 #include <usb.h>
@@ -66,8 +64,10 @@ int dram_init(void)
 }
 
 static iomux_v3_cfg_t const uart1_pads[] = {
-	MX6_PAD_CSI0_DAT10__UART1_TX_DATA | MUX_PAD_CTRL(UART_PAD_CTRL),
-	MX6_PAD_CSI0_DAT11__UART1_RX_DATA | MUX_PAD_CTRL(UART_PAD_CTRL),
+	//MX6_PAD_CSI0_DAT10__UART1_TX_DATA | MUX_PAD_CTRL(UART_PAD_CTRL),
+	//MX6_PAD_CSI0_DAT11__UART1_RX_DATA | MUX_PAD_CTRL(UART_PAD_CTRL),
+	MX6_PAD_SD3_DAT7__UART1_TX_DATA | MUX_PAD_CTRL(UART_PAD_CTRL),
+	MX6_PAD_SD3_DAT6__UART1_RX_DATA | MUX_PAD_CTRL(UART_PAD_CTRL),
 };
 
 static iomux_v3_cfg_t const enet_pads[] = {
@@ -108,26 +108,8 @@ static iomux_v3_cfg_t const usdhc2_pads[] = {
 	MX6_PAD_SD2_DAT1__SD2_DATA1	| MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	MX6_PAD_SD2_DAT2__SD2_DATA2	| MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	MX6_PAD_SD2_DAT3__SD2_DATA3	| MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX6_PAD_NANDF_D4__SD2_DATA4	| MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX6_PAD_NANDF_D5__SD2_DATA5	| MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX6_PAD_NANDF_D6__SD2_DATA6	| MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX6_PAD_NANDF_D7__SD2_DATA7	| MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX6_PAD_NANDF_D2__GPIO2_IO02	| MUX_PAD_CTRL(NO_PAD_CTRL), /* CD */
 };
 
-static iomux_v3_cfg_t const usdhc3_pads[] = {
-	MX6_PAD_SD3_CLK__SD3_CLK   | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX6_PAD_SD3_CMD__SD3_CMD   | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX6_PAD_SD3_DAT0__SD3_DATA0 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX6_PAD_SD3_DAT1__SD3_DATA1 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX6_PAD_SD3_DAT2__SD3_DATA2 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX6_PAD_SD3_DAT3__SD3_DATA3 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX6_PAD_SD3_DAT4__SD3_DATA4 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX6_PAD_SD3_DAT5__SD3_DATA5 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX6_PAD_SD3_DAT6__SD3_DATA6 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX6_PAD_SD3_DAT7__SD3_DATA7 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX6_PAD_NANDF_D0__GPIO2_IO00    | MUX_PAD_CTRL(NO_PAD_CTRL), /* CD */
-};
 
 static iomux_v3_cfg_t const usdhc4_pads[] = {
 	MX6_PAD_SD4_CLK__SD4_CLK   | MUX_PAD_CTRL(USDHC_PAD_CTRL),
@@ -242,17 +224,19 @@ static void setup_iomux_uart(void)
 }
 
 #ifdef CONFIG_FSL_ESDHC
-struct fsl_esdhc_cfg usdhc_cfg[3] = {
+struct fsl_esdhc_cfg usdhc_cfg[2] = {
 	{USDHC2_BASE_ADDR},
-	{USDHC3_BASE_ADDR},
 	{USDHC4_BASE_ADDR},
 };
 
-#define USDHC2_CD_GPIO	IMX_GPIO_NR(2, 2)
-#define USDHC3_CD_GPIO	IMX_GPIO_NR(2, 0)
+#define USDHC2_CD_GPIO	IMX_GPIO_NR(1, 4)
 
 int board_mmc_get_env_dev(int devno)
 {
+	if(3 == devno)
+	{
+		return devno-2;
+	}
 	return devno - 1;
 }
 
@@ -264,9 +248,6 @@ int board_mmc_getcd(struct mmc *mmc)
 	switch (cfg->esdhc_base) {
 	case USDHC2_BASE_ADDR:
 		ret = !gpio_get_value(USDHC2_CD_GPIO);
-		break;
-	case USDHC3_BASE_ADDR:
-		ret = !gpio_get_value(USDHC3_CD_GPIO);
 		break;
 	case USDHC4_BASE_ADDR:
 		ret = 1; /* eMMC/uSDHC4 is always present */
@@ -299,14 +280,8 @@ int board_mmc_init(bd_t *bis)
 			break;
 		case 1:
 			imx_iomux_v3_setup_multiple_pads(
-				usdhc3_pads, ARRAY_SIZE(usdhc3_pads));
-			gpio_direction_input(USDHC3_CD_GPIO);
-			usdhc_cfg[1].sdhc_clk = mxc_get_clock(MXC_ESDHC3_CLK);
-			break;
-		case 2:
-			imx_iomux_v3_setup_multiple_pads(
 				usdhc4_pads, ARRAY_SIZE(usdhc4_pads));
-			usdhc_cfg[2].sdhc_clk = mxc_get_clock(MXC_ESDHC4_CLK);
+			usdhc_cfg[1].sdhc_clk = mxc_get_clock(MXC_ESDHC4_CLK);
 			break;
 		default:
 			printf("Warning: you configured more USDHC controllers"
@@ -343,17 +318,10 @@ int board_mmc_init(bd_t *bis)
 		break;
 	case 0x2:
 		imx_iomux_v3_setup_multiple_pads(
-			usdhc3_pads, ARRAY_SIZE(usdhc3_pads));
-		usdhc_cfg[0].esdhc_base = USDHC3_BASE_ADDR;
-		usdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC3_CLK);
-		gd->arch.sdhc_clk = usdhc_cfg[0].sdhc_clk;
-		break;
-	case 0x3:
-		imx_iomux_v3_setup_multiple_pads(
 			usdhc4_pads, ARRAY_SIZE(usdhc4_pads));
-		usdhc_cfg[0].esdhc_base = USDHC4_BASE_ADDR;
-		usdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC4_CLK);
-		gd->arch.sdhc_clk = usdhc_cfg[0].sdhc_clk;
+		usdhc_cfg[1].esdhc_base = USDHC4_BASE_ADDR;
+		usdhc_cfg[1].sdhc_clk = mxc_get_clock(MXC_ESDHC4_CLK);
+		gd->arch.sdhc_clk = usdhc_cfg[1].sdhc_clk;
 		break;
 	}
 
@@ -623,11 +591,16 @@ int board_early_init_f(void)
 	return 0;
 }
 
+static iomux_v3_cfg_t const power_pads[] = {
+	MX6_PAD_EIM_BCLK__GPIO6_IO31 | MUX_PAD_CTRL(NO_PAD_CTRL),
+};
+
+
+
 int board_init(void)
 {
 	/* address of boot parameters */
 	gd->bd->bi_boot_params = PHYS_SDRAM + 0x100;
-
 #ifdef CONFIG_MXC_SPI
 	setup_spi();
 #endif
@@ -640,32 +613,14 @@ int board_init(void)
 	return 0;
 }
 
+#define BOARD_POWER_CTRL    IMX_GPIO_NR(6, 31)
+
 int power_init_board(void)
 {
-	struct pmic *p;
-	unsigned int reg;
-	int ret;
-
-	p = pfuze_common_init(I2C_PMIC);
-	if (!p)
-		return -ENODEV;
-
-	ret = pfuze_mode_init(p, APS_PFM);
-	if (ret < 0)
-		return ret;
-
-	/* Increase VGEN3 from 2.5 to 2.8V */
-	pmic_reg_read(p, PFUZE100_VGEN3VOL, &reg);
-	reg &= ~LDO_VOL_MASK;
-	reg |= LDOB_2_80V;
-	pmic_reg_write(p, PFUZE100_VGEN3VOL, reg);
-
-	/* Increase VGEN5 from 2.8 to 3V */
-	pmic_reg_read(p, PFUZE100_VGEN5VOL, &reg);
-	reg &= ~LDO_VOL_MASK;
-	reg |= LDOB_3_00V;
-	pmic_reg_write(p, PFUZE100_VGEN5VOL, reg);
-
+	
+	imx_iomux_v3_setup_multiple_pads(power_pads,
+					 ARRAY_SIZE(power_pads));
+	gpio_direction_output(BOARD_POWER_CTRL, 1);
 	return 0;
 }
 
@@ -695,13 +650,7 @@ int board_late_init(void)
 
 #ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
 	setenv("board_name", "SABRESD");
-
-	if (is_mx6dqp())
-		setenv("board_rev", "MX6QP");
-	else if (is_mx6dq())
-		setenv("board_rev", "MX6Q");
-	else if (is_mx6sdl())
-		setenv("board_rev", "MX6DL");
+	setenv("board_rev", "MX6Q");
 #endif
 
 	return 0;
@@ -843,101 +792,6 @@ static int mx6q_dcd_table[] = {
 	0x021b001c, 0x00000000,
 };
 
-static int mx6qp_dcd_table[] = {
-	0x020e0798, 0x000c0000,
-	0x020e0758, 0x00000000,
-	0x020e0588, 0x00000030,
-	0x020e0594, 0x00000030,
-	0x020e056c, 0x00000030,
-	0x020e0578, 0x00000030,
-	0x020e074c, 0x00000030,
-	0x020e057c, 0x00000030,
-	0x020e058c, 0x00000000,
-	0x020e059c, 0x00000030,
-	0x020e05a0, 0x00000030,
-	0x020e078c, 0x00000030,
-	0x020e0750, 0x00020000,
-	0x020e05a8, 0x00000030,
-	0x020e05b0, 0x00000030,
-	0x020e0524, 0x00000030,
-	0x020e051c, 0x00000030,
-	0x020e0518, 0x00000030,
-	0x020e050c, 0x00000030,
-	0x020e05b8, 0x00000030,
-	0x020e05c0, 0x00000030,
-	0x020e0774, 0x00020000,
-	0x020e0784, 0x00000030,
-	0x020e0788, 0x00000030,
-	0x020e0794, 0x00000030,
-	0x020e079c, 0x00000030,
-	0x020e07a0, 0x00000030,
-	0x020e07a4, 0x00000030,
-	0x020e07a8, 0x00000030,
-	0x020e0748, 0x00000030,
-	0x020e05ac, 0x00000030,
-	0x020e05b4, 0x00000030,
-	0x020e0528, 0x00000030,
-	0x020e0520, 0x00000030,
-	0x020e0514, 0x00000030,
-	0x020e0510, 0x00000030,
-	0x020e05bc, 0x00000030,
-	0x020e05c4, 0x00000030,
-	0x021b0800, 0xa1390003,
-	0x021b080c, 0x001b001e,
-	0x021b0810, 0x002e0029,
-	0x021b480c, 0x001b002a,
-	0x021b4810, 0x0019002c,
-	0x021b083c, 0x43240334,
-	0x021b0840, 0x0324031a,
-	0x021b483c, 0x43340344,
-	0x021b4840, 0x03280276,
-	0x021b0848, 0x44383A3E,
-	0x021b4848, 0x3C3C3846,
-	0x021b0850, 0x2e303230,
-	0x021b4850, 0x38283E34,
-	0x021b081c, 0x33333333,
-	0x021b0820, 0x33333333,
-	0x021b0824, 0x33333333,
-	0x021b0828, 0x33333333,
-	0x021b481c, 0x33333333,
-	0x021b4820, 0x33333333,
-	0x021b4824, 0x33333333,
-	0x021b4828, 0x33333333,
-	0x021b08c0, 0x24912249,
-	0x021b48c0, 0x24914289,
-	0x021b08b8, 0x00000800,
-	0x021b48b8, 0x00000800,
-	0x021b0004, 0x00020036,
-	0x021b0008, 0x24444040,
-	0x021b000c, 0x555A7955,
-	0x021b0010, 0xFF320F64,
-	0x021b0014, 0x01ff00db,
-	0x021b0018, 0x00001740,
-	0x021b001c, 0x00008000,
-	0x021b002c, 0x000026d2,
-	0x021b0030, 0x005A1023,
-	0x021b0040, 0x00000027,
-	0x021b0400, 0x14420000,
-	0x021b0000, 0x831A0000,
-	0x021b0890, 0x00400C58,
-	0x00bb0008, 0x00000000,
-	0x00bb000c, 0x2891E41A,
-	0x00bb0038, 0x00000564,
-	0x00bb0014, 0x00000040,
-	0x00bb0028, 0x00000020,
-	0x00bb002c, 0x00000020,
-	0x021b001c, 0x04088032,
-	0x021b001c, 0x00008033,
-	0x021b001c, 0x00048031,
-	0x021b001c, 0x09408030,
-	0x021b001c, 0x04008040,
-	0x021b0020, 0x00005800,
-	0x021b0818, 0x00011117,
-	0x021b4818, 0x00011117,
-	0x021b0004, 0x00025576,
-	0x021b0404, 0x00011006,
-	0x021b001c, 0x00000000,
-};
 
 static void ddr_init(int *table, int size)
 {
@@ -949,10 +803,7 @@ static void ddr_init(int *table, int size)
 
 static void spl_dram_init(void)
 {
-	if (is_mx6dq())
 		ddr_init(mx6q_dcd_table, ARRAY_SIZE(mx6q_dcd_table));
-	else if (is_mx6dqp())
-		ddr_init(mx6qp_dcd_table, ARRAY_SIZE(mx6qp_dcd_table));
 }
 
 void board_init_f(ulong dummy)

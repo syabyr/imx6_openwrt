@@ -18,10 +18,11 @@ struct mmc *find_mmc_device(int dev_num)
 {
 	struct mmc *m;
 	struct list_head *entry;
+	printf("want find:%d\r\n",dev_num);
 
 	list_for_each(entry, &mmc_devices) {
 		m = list_entry(entry, struct mmc, link);
-
+		printf("debug:%d\r\n",m->block_dev.devnum);
 		if (m->block_dev.devnum == dev_num)
 			return m;
 	}
